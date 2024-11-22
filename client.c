@@ -4,62 +4,75 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define PORT 8080  // порт, будет подключаться клиент
+#define PORT 1080
 
 int main(int argc, char const *argv[]) {
     int sock = 0;
     struct sockaddr_in serv_addr;
-    char buffer[1024] = {0};  // буфер для передач данных
+    char buffer[1024] = {0};  // буфер для передачи данных
     int guess;
 
-    // проверка аргументов команд строки
+    // Проверка аргументов командной строки
     if (argc != 2) {
-        printf("Использование: %s <Server IP>\n", argv[0]);
-        return -1;
+        fprintf(stderr, "Использование: %s <Server IP>\n", argv[0]);
+        return EXIT_FAILURE;
     }
 
-    // создание сокета
+    // Создание сокета
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("Ошибка создания сокета\n");
-        return -1;
+        perror("Ошибка создания сокета");
+        return EXIT_FAILURE;
     }
 
-    // заполнение структуры с адресом сервера
+    // Заполнение структуры с адресом сервера
     serv_addr.sin_family = AF_INET;          // используем IPv4
     serv_addr.sin_port = htons(PORT);        // преобразуем порт в порядок байтов
 
-    // преобразование IP-адреса из текстового в бинарное
+    // Преобразование IP-адреса из текстового в бинарное
     if (inet_pton(AF_INET, argv[1], &serv_addr.sin_addr) <= 0) {
-        printf("Неверный адрес/ Адрес не поддерживается\n");
-        return -1;
+        fprintf(stderr, "Неверный адрес/ Адрес не поддерживается\n");
+        close(sock);
+        return EXIT_FAILURE;
     }
 
-    // подключение к серверу
+    // Подключение к серверу
     if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        printf("Не удалось установить соединение\n");
-        return -1;
+        perror("Не удалось установить соединение");
+        close(sock);
+        return EXIT_FAILURE;
     }
 
-    // основной цикл игры
+    // Основной цикл игры
     while (1) {
         printf("Введите своё число (1-100): ");
-        scanf("%d", &guess);
+        if (scanf("%d", &guess) != 1 || guess < 1 || guess > 100) {
+            fprintf(stderr, "Введите корректное число в диапазоне от 1 до 100.\n");
+            while(getchar() != '\n'); // очистка буфера ввода
+            continue;
+        }
 
-        // отправка предположения на сервер
+        // Отправка предположения на сервер
         sprintf(buffer, "%d", guess);
         send(sock, buffer, strlen(buffer), 0);
 
-        // получение ответа от сервера
+        // Получение ответа от сервера
         memset(buffer, 0, sizeof(buffer));
-        int valread = read(sock, buffer, sizeof(buffer));
+        int valread = read(sock, buffer, sizeof(buffer), 0);
+        
+        if (valread < 0) {
+            perror("Ошибка чтения от сервера");
+            break;
+        }
+
         printf("Сервер: %s\n", buffer);
 
-        // проверка, угадано ли число
+        // Проверка, угадано ли число
         if (strcmp(buffer, "Правильно!") == 0) {
+            printf("Вы угадали число!\n");
             break;
         }
     }
 
-    close(sock);  // закрытие сокета клиента
-    return 0;
+    close(sock);  // Закрытие сокета клиента
+    return EXIT_SUCCESS;
 }
