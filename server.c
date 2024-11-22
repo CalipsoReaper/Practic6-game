@@ -69,7 +69,7 @@ int main() {
 
         while (1) {
             memset(buffer, 0, sizeof(buffer));  // очистка буфера приемом
-            int valread = read(new_socket, buffer, sizeof(buffer));
+            int valread = recv(new_socket, buffer, sizeof(buffer), 0);
             if (valread <= 0) {
                 log_message(client_ip, "Клиент отключен"); // логи отключения клиента
                 break;  // выходим из внутреннего цикла
