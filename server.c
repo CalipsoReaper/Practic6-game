@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <time.h>
 
-#define PORT 8080       // порт, на котором будет работать сервер
-#define MAX_CONN 5      // макс количество подключений в очереди
+#define PORT 1080
+#define MAX_CONN 5
 
 // Функция для логов сообщений от клиента
 void log_message(const char* client_ip, const char* message) {
@@ -36,16 +36,21 @@ int main() {
     // привязка сокета к указанному адресу и порту
     if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
         perror("bind failed");   // ошибка привязки
+        close(server_fd);
         exit(EXIT_FAILURE);
     }
 
     // прослушивание подключений
     if (listen(server_fd, MAX_CONN) < 0) {
         perror("listen");   // ошибка при режиме прослушивания
+        close(server_fd);
         exit(EXIT_FAILURE);
     }
     
     printf("Сервер запущен по порту %d\n", PORT);
+
+    // генерация случайного числа вне цикла
+    srand(time(NULL));
 
     // основной цикл сервера
     while (1) {
@@ -54,24 +59,20 @@ int main() {
         new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
         if (new_socket < 0) {
             perror("accept");   // ошибка при принятии подключения
-            exit(EXIT_FAILURE);
+            continue;  // продолжаем ожидание следующего подключения
         }
 
         // получение IP-адреса клиента в строке
         inet_ntop(AF_INET, &address.sin_addr, client_ip, INET_ADDRSTRLEN);
         log_message(client_ip, "Подключенный клиент");
-
-        // генерация случайного числа
-        srand(time(NULL));
-        number_to_guess = rand() % 100 + 1;
+        number_to_guess = rand() % 100 + 1;  // генерация нового числа для каждого клиента
 
         while (1) {
             memset(buffer, 0, sizeof(buffer));  // очистка буфера приемом
             int valread = read(new_socket, buffer, sizeof(buffer));
             if (valread <= 0) {
                 log_message(client_ip, "Клиент отключен"); // логи отключения клиента
-                close(new_socket);
-                break;
+                break;  // выходим из внутреннего цикла
             }
 
             guess = atoi(buffer);  // преобразование строки в число
