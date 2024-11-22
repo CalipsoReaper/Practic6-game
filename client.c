@@ -57,7 +57,7 @@ int main(int argc, char const *argv[]) {
 
         // Получение ответа от сервера
         memset(buffer, 0, sizeof(buffer));
-        int valread = read(sock, buffer, sizeof(buffer), 0);
+        int valread = recv(sock, buffer, sizeof(buffer), 0);
         
         if (valread < 0) {
             perror("Ошибка чтения от сервера");
